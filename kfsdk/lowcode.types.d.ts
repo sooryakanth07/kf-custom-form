@@ -94,6 +94,40 @@ declare class Dataform {
         updateItem(options: DataformUpdateItemOptions): Promise<DataformItem>; 
 	importCSV(defaultValues?: object): any; 
 	openForm(item: DataformItem): any; 
+	/**
+         * Get a form instance for a specific dataform record
+         * This returns a Form instance that uses the shared form store
+         * allowing you to manage dataform records with form SDK methods
+         *
+         * @param instanceId - The instance ID of the dataform record
+         * @returns Form instance for managing the record
+         *
+         * @example
+         * const dataform = kf.app.getDataform("EmpMaster");
+         * const form = dataform.getForm("emp_123");
+         * const data = await form.toJSON();
+         * await form.updateField({ firstName: "John" });
+         */
+        getForm(instanceId: string): Form; 
+	/**
+         * Initialize a form with all necessary data (schema, item data, form store)
+         * This is the recommended way to create a custom form for dataform records
+         * It automatically handles fetching schema, item data, and initializing the form store
+         *
+         * @param instanceId - Optional instance ID of the dataform record. If omitted, creates a new record
+         * @returns Promise with Form instance ready to use
+         *
+         * @example
+         * // Load existing record
+         * const dataform = kf.app.getDataform("EmpMaster");
+         * const form = await dataform.initForm("emp_123");
+         * const data = await form.toJSON();
+         *
+         * // Create new record
+         * const form = await dataform.initForm();
+         * await form.updateField({ firstName: "John" });
+         */
+        initForm(instanceId?: string): Promise<Form>; 
 }
 declare class Board { 
 	importCSV(defaultValues?: object): any; 

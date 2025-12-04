@@ -506,10 +506,7 @@ export default function FormRenderer({
       defaultValues: {},
     });
 
-    
-
 const dataform = kf.app.getDataform("DF_form_A00")
-
   useEffect(() => {
     const fetchData = async () => {
       try {

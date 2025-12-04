@@ -48,7 +48,6 @@ const LISTENER_CMDS = {
   TO_JSON: "TO_JSON",
   GET_TABLE_ROWS: "GET_TABLE_ROWS",
   GET_SELECTED_TABLE_ROWS: "GET_SELECTED_TABLE_ROWS",
-  GET_FORM_VALIDATION_ERRORS: "GET_FORM_VALIDATION_ERRORS",
   MESSAGE: "MESSAGE",
   CONFIRM: "CONFIRM",
   ALERT: "ALERT",
@@ -140,7 +139,9 @@ function onMessage(event) {
     }
   }
 }
-globalThis.addEventListener("message", onMessage);
+if (typeof globalThis !== "undefined" && globalThis.addEventListener) {
+  globalThis.addEventListener("message", onMessage);
+}
 class EventBase {
   constructor() {
     __privateAdd(this, _listeners, void 0);
@@ -609,127 +610,6 @@ class Application extends BaseSDK {
     return new Process(flowId);
   }
 }
-class Form extends BaseSDK {
-  constructor(instanceId) {
-    super();
-    this.type = "Form";
-    this.instanceId = instanceId;
-  }
-  toJSON() {
-    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
-      instanceId: this.instanceId
-    });
-  }
-  getField(fieldId) {
-    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_FIELD, {
-      instanceId: this.instanceId,
-      fieldId
-    });
-  }
-  updateField(args) {
-    return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
-      data: args
-    });
-  }
-  getValidationErrors() {
-    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_VALIDATION_ERRORS, {
-      instanceId: this.instanceId
-    });
-  }
-  getTable(tableId) {
-    return new Table(this.instanceId, tableId);
-  }
-}
-class Table extends BaseSDK {
-  constructor(instanceId, tableId) {
-    super();
-    this.tableId = tableId;
-    this.instanceId = instanceId;
-  }
-  toJSON() {
-    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
-      tableId: this.tableId
-    });
-  }
-  getSelectedRows() {
-    return this._postMessageAsync(LISTENER_CMDS.GET_SELECTED_TABLE_ROWS, {
-      tableId: this.tableId
-    });
-  }
-  getRows() {
-    return this._postMessageAsync(
-      LISTENER_CMDS.GET_TABLE_ROWS,
-      { tableId: this.tableId },
-      true,
-      (data) => {
-        return data.map(
-          (row) => new TableForm(this.instanceId, this.tableId, row.id)
-        );
-      }
-    );
-  }
-  getRow(rowId) {
-    return new TableForm(this.instanceId, this.tableId, rowId);
-  }
-  addRow(rowObject) {
-    return this._postMessageAsync(LISTENER_CMDS.ADD_TABLE_ROW, {
-      tableId: this.tableId,
-      rowObject
-    });
-  }
-  addRows(rows) {
-    return this._postMessageAsync(LISTENER_CMDS.ADD_TABLE_ROWS, {
-      tableId: this.tableId,
-      rows
-    });
-  }
-  deleteRow(rowId) {
-    return this._postMessageAsync(LISTENER_CMDS.DELETE_TABLE_ROW, {
-      tableId: this.tableId,
-      rows: [rowId]
-    });
-  }
-  deleteRows(rows) {
-    return this._postMessageAsync(LISTENER_CMDS.DELETE_TABLE_ROW, {
-      tableId: this.tableId,
-      rows
-    });
-  }
-}
-class TableForm extends BaseSDK {
-  constructor(instanceId, tableId, rowId) {
-    super();
-    this.instanceId = instanceId;
-    this.type = "TabelForm";
-    this.tableId = tableId;
-    this.rowId = rowId;
-  }
-  getParent() {
-    return new Form(this.instanceId);
-  }
-  toJSON() {
-    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
-      tableId: this.tableId,
-      rowId: this.rowId
-    });
-  }
-  getField(fieldId) {
-    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_FIELD, {
-      instanceId: this.instanceId,
-      tableId: this.tableId,
-      rowId: this.rowId,
-      fieldId
-    });
-  }
-  updateField(args) {
-    return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
-      instanceId: this.instanceId,
-      tableId: this.tableId,
-      rowId: this.rowId,
-      data: args
-    });
-  }
-}
 class CustomComponentSDK extends BaseSDK {
   constructor() {
     super();
@@ -750,11 +630,7 @@ class CustomComponentSDK extends BaseSDK {
       (data) => {
         this.app = new Application(data, true);
         this.page = new Page(data, true);
-        if (data.formInstanceId) {
-          this.context = new Form(data.formInstanceId);
-        } else {
-          this.context = new CustomComponent(data.componentId);
-        }
+        this.context = new CustomComponent(data.componentId);
         this.client = new Client();
         this.formatter = new Formatter();
         this.user = data.user;

@@ -4,7 +4,6 @@ declare class Form {
 	toJSON(): any; 
 	getField(fieldId: string): any; 
 	updateField(args: object): any; 
-	getValidationErrors(): any; 
 	getTable(tableId: string): Table; 
 }
 declare class Table { 

@@ -1,5 +1,5 @@
 "use client"
-import KFSDK from "../../sdk/kfsdk.es";
+import KFSDK from "../../kfsdk/kfsdk.es";
 import React, { useState, useEffect } from "react";
 
 let kf;

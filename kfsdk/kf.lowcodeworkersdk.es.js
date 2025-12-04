@@ -20,7 +20,7 @@ var __privateMethod = (obj, member, method) => {
   __accessCheck(obj, member, "access private method");
   return method;
 };
-var _listeners, _textEncoder, _textDecoder, _registerComponentAPIs, registerComponentAPIs_fn;
+var _listeners, _textEncoder, _textDecoder, _registerComponentAPIs, registerComponentAPIs_fn, _csrfToken;
 let nanoid = (size = 21) => crypto.getRandomValues(new Uint8Array(size)).reduce((id, byte) => {
   byte &= 63;
   if (byte < 36) {
@@ -89,6 +89,7 @@ const LISTENER_CMDS = {
   DATAFORM_GET_ITEMS: "DATAFORM_GET_ITEMS",
   DATAFORM_CREATE_ITEM: "DATAFORM_CREATE_ITEM",
   DATAFORM_UPDATE_ITEM: "DATAFORM_UPDATE_ITEM",
+  DATAFORM_INIT_FORM: "DATAFORM_INIT_FORM",
   PROCESS_OPEN_FORM: "PROCESS_OPEN_FORM",
   BOARD_IMPORT_CSV: "BOARD_IMPORT_CSV",
   BOARD_OPEN_FORM: "BOARD_OPEN_FORM"
@@ -153,8 +154,8 @@ class EventBase {
   }
   _removeEventListener(eventName, callBack) {
     if (callBack) {
-      let index2 = __privateGet(this, _listeners)[eventName].findIndex(callBack);
-      index2 > -1 && __privateGet(this, _listeners)[eventName].splice(index2, 1);
+      let index = __privateGet(this, _listeners)[eventName].findIndex(callBack);
+      index > -1 && __privateGet(this, _listeners)[eventName].splice(index, 1);
       return;
     }
     Reflect.deleteProperty(__privateGet(this, _listeners), eventName);
@@ -239,26 +240,26 @@ class AtomicsHandler {
     this.sab = sharedArrayBufferInstance;
     this.int32Array = new Int32Array(this.sab);
   }
-  load(index2 = 0) {
-    return Atomics.load(this.int32Array, index2);
+  load(index = 0) {
+    return Atomics.load(this.int32Array, index);
   }
-  store(index2 = 0, data) {
-    return Atomics.store(this.int32Array, index2, data);
+  store(index = 0, data) {
+    return Atomics.store(this.int32Array, index, data);
   }
   reset() {
     return this.int32Array.fill(0);
   }
-  notify(index2 = 0, count = 1) {
-    return Atomics.notify(this.int32Array, index2, count);
+  notify(index = 0, count = 1) {
+    return Atomics.notify(this.int32Array, index, count);
   }
-  wait(index2, value, timeout) {
-    return Atomics.wait(this.int32Array, index2, value, timeout);
+  wait(index, value, timeout) {
+    return Atomics.wait(this.int32Array, index, value, timeout);
   }
-  encodeData(index2 = 0, data) {
+  encodeData(index = 0, data) {
     const replacer = (key, value) => value === void 0 ? "undefined" : value;
     let string = JSON.stringify(data, replacer);
     let encodedData = __privateGet(this, _textEncoder).encode(string);
-    this.int32Array.set(encodedData, index2);
+    this.int32Array.set(encodedData, index);
     return this.int32Array;
   }
   decodeData() {
@@ -269,6 +270,127 @@ class AtomicsHandler {
 }
 _textEncoder = new WeakMap();
 _textDecoder = new WeakMap();
+class Form extends BaseSDK {
+  constructor(instanceId) {
+    super();
+    this.type = "Form";
+    this.instanceId = instanceId;
+  }
+  toJSON() {
+    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
+      instanceId: this.instanceId
+    });
+  }
+  getField(fieldId) {
+    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_FIELD, {
+      instanceId: this.instanceId,
+      fieldId
+    });
+  }
+  updateField(args) {
+    return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
+      data: args
+    });
+  }
+  getValidationErrors() {
+    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_VALIDATION_ERRORS, {
+      instanceId: this.instanceId
+    });
+  }
+  getTable(tableId) {
+    return new Table(this.instanceId, tableId);
+  }
+}
+class Table extends BaseSDK {
+  constructor(instanceId, tableId) {
+    super();
+    this.tableId = tableId;
+    this.instanceId = instanceId;
+  }
+  toJSON() {
+    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
+      tableId: this.tableId
+    });
+  }
+  getSelectedRows() {
+    return this._postMessageAsync(LISTENER_CMDS.GET_SELECTED_TABLE_ROWS, {
+      tableId: this.tableId
+    });
+  }
+  getRows() {
+    return this._postMessageAsync(
+      LISTENER_CMDS.GET_TABLE_ROWS,
+      { tableId: this.tableId },
+      true,
+      (data) => {
+        return data.map(
+          (row) => new TableForm(this.instanceId, this.tableId, row.id)
+        );
+      }
+    );
+  }
+  getRow(rowId) {
+    return new TableForm(this.instanceId, this.tableId, rowId);
+  }
+  addRow(rowObject) {
+    return this._postMessageAsync(LISTENER_CMDS.ADD_TABLE_ROW, {
+      tableId: this.tableId,
+      rowObject
+    });
+  }
+  addRows(rows) {
+    return this._postMessageAsync(LISTENER_CMDS.ADD_TABLE_ROWS, {
+      tableId: this.tableId,
+      rows
+    });
+  }
+  deleteRow(rowId) {
+    return this._postMessageAsync(LISTENER_CMDS.DELETE_TABLE_ROW, {
+      tableId: this.tableId,
+      rows: [rowId]
+    });
+  }
+  deleteRows(rows) {
+    return this._postMessageAsync(LISTENER_CMDS.DELETE_TABLE_ROW, {
+      tableId: this.tableId,
+      rows
+    });
+  }
+}
+class TableForm extends BaseSDK {
+  constructor(instanceId, tableId, rowId) {
+    super();
+    this.instanceId = instanceId;
+    this.type = "TabelForm";
+    this.tableId = tableId;
+    this.rowId = rowId;
+  }
+  getParent() {
+    return new Form(this.instanceId);
+  }
+  toJSON() {
+    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
+      tableId: this.tableId,
+      rowId: this.rowId
+    });
+  }
+  getField(fieldId) {
+    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_FIELD, {
+      instanceId: this.instanceId,
+      tableId: this.tableId,
+      rowId: this.rowId,
+      fieldId
+    });
+  }
+  updateField(args) {
+    return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
+      instanceId: this.instanceId,
+      tableId: this.tableId,
+      rowId: this.rowId,
+      data: args
+    });
+  }
+}
 class Client extends BaseSDK {
   showInfo(message) {
     return super._postMessageAsync(LISTENER_CMDS.MESSAGE, { message });
@@ -376,27 +498,6 @@ registerComponentAPIs_fn = function(componentAPIs) {
     };
   });
 };
-class CustomComponent extends BaseSDK {
-  constructor(id) {
-    super();
-    this._id = id;
-    this.type = "CustomComponent";
-    globalInstances[this._id] = this;
-  }
-  watchParams(callBack) {
-    this._postMessage(
-      LISTENER_CMDS.CC_WATCH_PARAMS,
-      {
-        id: this._id,
-        eventName: EVENT_TYPES.CC_ON_PARAMS_CHANGE,
-        eventConfig: {
-          once: false
-        }
-      },
-      callBack
-    );
-  }
-}
 class Popup extends BaseSDK {
   constructor(props) {
     super();
@@ -530,6 +631,17 @@ class Dataform extends BaseSDK {
       itemId: item._id
     });
   }
+  getForm(instanceId) {
+    return new Form(instanceId);
+  }
+  initForm(instanceId) {
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_INIT_FORM, {
+      flowId: this._id,
+      instanceId: instanceId || ""
+    }).then((response) => {
+      return new Form(response.storeId || instanceId || "");
+    });
+  }
 }
 class Board extends BaseSDK {
   constructor(flowId) {
@@ -609,164 +721,126 @@ class Application extends BaseSDK {
     return new Process(flowId);
   }
 }
-class Form extends BaseSDK {
-  constructor(instanceId) {
-    super();
-    this.type = "Form";
-    this.instanceId = instanceId;
-  }
-  toJSON() {
-    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
-      instanceId: this.instanceId
-    });
-  }
-  getField(fieldId) {
-    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_FIELD, {
-      instanceId: this.instanceId,
-      fieldId
-    });
-  }
-  updateField(args) {
-    return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
-      data: args
-    });
-  }
-  getValidationErrors() {
-    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_VALIDATION_ERRORS, {
-      instanceId: this.instanceId
-    });
-  }
-  getTable(tableId) {
-    return new Table(this.instanceId, tableId);
-  }
-}
-class Table extends BaseSDK {
-  constructor(instanceId, tableId) {
-    super();
-    this.tableId = tableId;
-    this.instanceId = instanceId;
-  }
-  toJSON() {
-    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
-      tableId: this.tableId
-    });
-  }
-  getSelectedRows() {
-    return this._postMessageAsync(LISTENER_CMDS.GET_SELECTED_TABLE_ROWS, {
-      tableId: this.tableId
-    });
-  }
-  getRows() {
-    return this._postMessageAsync(
-      LISTENER_CMDS.GET_TABLE_ROWS,
-      { tableId: this.tableId },
-      true,
-      (data) => {
-        return data.map(
-          (row) => new TableForm(this.instanceId, this.tableId, row.id)
-        );
-      }
-    );
-  }
-  getRow(rowId) {
-    return new TableForm(this.instanceId, this.tableId, rowId);
-  }
-  addRow(rowObject) {
-    return this._postMessageAsync(LISTENER_CMDS.ADD_TABLE_ROW, {
-      tableId: this.tableId,
-      rowObject
-    });
-  }
-  addRows(rows) {
-    return this._postMessageAsync(LISTENER_CMDS.ADD_TABLE_ROWS, {
-      tableId: this.tableId,
-      rows
-    });
-  }
-  deleteRow(rowId) {
-    return this._postMessageAsync(LISTENER_CMDS.DELETE_TABLE_ROW, {
-      tableId: this.tableId,
-      rows: [rowId]
-    });
-  }
-  deleteRows(rows) {
-    return this._postMessageAsync(LISTENER_CMDS.DELETE_TABLE_ROW, {
-      tableId: this.tableId,
-      rows
-    });
-  }
-}
-class TableForm extends BaseSDK {
-  constructor(instanceId, tableId, rowId) {
-    super();
-    this.instanceId = instanceId;
-    this.type = "TabelForm";
-    this.tableId = tableId;
-    this.rowId = rowId;
-  }
-  getParent() {
-    return new Form(this.instanceId);
-  }
-  toJSON() {
-    return this._postMessageAsync(LISTENER_CMDS.TO_JSON, {
-      tableId: this.tableId,
-      rowId: this.rowId
-    });
-  }
-  getField(fieldId) {
-    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_FIELD, {
-      instanceId: this.instanceId,
-      tableId: this.tableId,
-      rowId: this.rowId,
-      fieldId
-    });
-  }
-  updateField(args) {
-    return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
-      instanceId: this.instanceId,
-      tableId: this.tableId,
-      rowId: this.rowId,
-      data: args
-    });
-  }
-}
-class CustomComponentSDK extends BaseSDK {
+class NDEFReader extends BaseSDK {
   constructor() {
     super();
-  }
-  api(url, args) {
-    return this._postMessageAsync(LISTENER_CMDS.API, { url, args: args || {} });
-  }
-  initialize() {
-    if (globalThis.parent && globalThis.parent === globalThis) {
-      return Promise.reject(
-        "SDK can be initialized only inside the Kissflow platform."
-      );
-    }
-    return this._postMessageAsync(
-      LISTENER_CMDS.CC_INITIALIZE,
-      {},
-      true,
+    this.id = generateId(LISTENER_CMDS.WINDOW_NDEF_READER_NEW);
+    globalInstances[this.id] = this;
+    this._postMessage(
+      LISTENER_CMDS.WINDOW_NDEF_READER_NEW,
+      {
+        id: this.id,
+        operation: "new"
+      },
       (data) => {
-        this.app = new Application(data, true);
-        this.page = new Page(data, true);
-        if (data.formInstanceId) {
-          this.context = new Form(data.formInstanceId);
-        } else {
-          this.context = new CustomComponent(data.componentId);
-        }
-        this.client = new Client();
-        this.formatter = new Formatter();
-        this.user = data.user;
-        this.account = data.account;
-        this.env = data.envDetails;
-        return this;
       }
     );
   }
-  initialise() {
-    return this.initialize();
+  scan() {
+    return new Promise((resolve, reject) => {
+      this._postMessage(
+        LISTENER_CMDS.WINDOW_NDEF_READER_SCAN,
+        { id: this.id, operation: "scan" },
+        ({ data, err }) => {
+          console.log("scan data from main window ", data);
+          resolve(data);
+        }
+      );
+    });
+  }
+  write(data) {
+    return new Promise((resolve, reject) => {
+      this._postMessage(
+        LISTENER_CMDS.WINDOW_NDEF_READER_WRITE,
+        { id: this.id, operation: "write", data },
+        ({ data: data2, err }) => {
+        }
+      );
+    });
+  }
+  addEventListener(eventName, cb) {
+    this._postMessage(
+      LISTENER_CMDS.WINDOW_NDEF_READER_ADD_EVENT_LISTENER,
+      {
+        id: this.id,
+        operation: "addEventListener",
+        eventName
+      },
+      () => {
+      }
+    );
+  }
+  makeReadOnly() {
+    return new Promise((resolve, reject) => {
+      this._postMessage(
+        LISTENER_CMDS.WINDOW_NDEF_READER_MAKE_READONLY,
+        { id: this.id, operation: "makeReadOnly" },
+        ({ data, err }) => {
+        }
+      );
+    });
+  }
+  abortScan() {
+    return new Promise((resolve, reject) => {
+      this._postMessage(
+        LISTENER_CMDS.WINDOW_NDEF_READER_ABORT_SCAN,
+        { id: this.id, operation: "abortScan" },
+        ({ data, err }) => {
+        }
+      );
+    });
   }
 }
-var index = new CustomComponentSDK();
-export { index as default };
+const window = {
+  NDEFReader
+};
+class LowcodeSDK extends BaseSDK {
+  constructor(props) {
+    super();
+    __privateAdd(this, _csrfToken, void 0);
+    if (props.tableId && props.tableRowId) {
+      this.context = new TableForm(
+        props.formInstanceId,
+        props.tableId,
+        props.tableRowId
+      );
+    } else if (props.formInstanceId) {
+      this.context = new Form(props.formInstanceId);
+    } else if (props.popupId) {
+      this.context = new Popup(props);
+    } else if (props.pageId && !props.componentId) {
+      this.context = new Page(props);
+    } else if (props.componentId) {
+      this.context = new Component(props);
+    }
+    this.client = new Client();
+    this.formatter = new Formatter();
+    if (props.appId) {
+      this.app = new Application(props);
+    }
+    this.user = props.user;
+    this.env = props.envDetails;
+    this.account = props.account;
+    __privateSet(this, _csrfToken, props.csrfToken);
+  }
+  async api(url, args) {
+    const response = await globalThis.fetch(url, {
+      ...args,
+      headers: {
+        ...(args == null ? void 0 : args.headers) || {},
+        "X-Csrf-Token": __privateGet(this, _csrfToken)
+      }
+    });
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json();
+    } else {
+      return response;
+    }
+  }
+}
+_csrfToken = new WeakMap();
+function initSDK(config) {
+  return new LowcodeSDK(config);
+}
+export { initSDK as default, window };

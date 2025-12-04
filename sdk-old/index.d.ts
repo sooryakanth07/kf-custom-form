@@ -13,7 +13,6 @@ declare module "core/constants" {
         TO_JSON: string;
         GET_TABLE_ROWS: string;
         GET_SELECTED_TABLE_ROWS: string;
-        GET_FORM_VALIDATION_ERRORS: string;
         MESSAGE: string;
         CONFIRM: string;
         ALERT: string;
@@ -351,6 +350,28 @@ declare module "app/index" {
     export { Page };
     export * from "app/popup";
 }
+declare module "index" {
+    import { BaseSDK } from "core/index";
+    import { Application, Page, CustomComponent } from "app/index";
+    import { Client, Formatter } from "utils/index";
+    import { userObject, accountObject, environmentObject } from "types/external";
+    class CustomComponentSDK extends BaseSDK {
+        app: Application;
+        page: Page;
+        user: userObject;
+        account: accountObject;
+        context: CustomComponent;
+        client: Client;
+        formatter: Formatter;
+        env: environmentObject;
+        constructor();
+        api(url: string, args?: object): string | object;
+        initialize(): any;
+        initialise(): any;
+    }
+    const _default: CustomComponentSDK;
+    export default _default;
+}
 declare module "form/index" {
     import { BaseSDK } from "core/index";
     export class Form extends BaseSDK {
@@ -360,7 +381,6 @@ declare module "form/index" {
         toJSON(): any;
         getField(fieldId: string): any;
         updateField(args: object): any;
-        getValidationErrors(): any;
         getTable(tableId: string): Table;
     }
     class Table extends BaseSDK {
@@ -387,29 +407,6 @@ declare module "form/index" {
         getField(fieldId: string): any;
         updateField(args: object): any;
     }
-}
-declare module "index" {
-    import { BaseSDK } from "core/index";
-    import { Application, Page, CustomComponent } from "app/index";
-    import { Form } from "form/index";
-    import { Client, Formatter } from "utils/index";
-    import { userObject, accountObject, environmentObject } from "types/external";
-    class CustomComponentSDK extends BaseSDK {
-        app: Application;
-        page: Page;
-        user: userObject;
-        account: accountObject;
-        context: CustomComponent | Form;
-        client: Client;
-        formatter: Formatter;
-        env: environmentObject;
-        constructor();
-        api(url: string, args?: object): string | object;
-        initialize(): any;
-        initialise(): any;
-    }
-    const _default: CustomComponentSDK;
-    export default _default;
 }
 declare module "window/NDEFReader" {
     import { BaseSDK } from "core/index";

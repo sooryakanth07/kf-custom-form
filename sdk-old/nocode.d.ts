@@ -13,7 +13,6 @@ declare module "core/constants" {
         TO_JSON: string;
         GET_TABLE_ROWS: string;
         GET_SELECTED_TABLE_ROWS: string;
-        GET_FORM_VALIDATION_ERRORS: string;
         MESSAGE: string;
         CONFIRM: string;
         ALERT: string;
@@ -84,6 +83,42 @@ declare module "core/index" {
     }
     export * from "core/constants";
 }
+declare module "form/index" {
+    import { BaseSDK } from "core/index";
+    export class Form extends BaseSDK {
+        private instanceId;
+        type: string;
+        constructor(instanceId: string);
+        toJSON(): any;
+        getField(fieldId: string): any;
+        updateField(args: object): any;
+        getTable(tableId: string): Table;
+    }
+    class Table extends BaseSDK {
+        private tableId;
+        private instanceId;
+        constructor(instanceId: string, tableId: string);
+        toJSON(): any;
+        getSelectedRows(): any;
+        getRows(): TableForm[];
+        getRow(rowId: string): TableForm;
+        addRow(rowObject: object): any;
+        addRows(rows: object[]): any;
+        deleteRow(rowId: string): any;
+        deleteRows(rows: string[]): any;
+    }
+    export class TableForm extends BaseSDK {
+        private instanceId;
+        private tableId;
+        private rowId;
+        type: string;
+        constructor(instanceId: string, tableId: string, rowId: string);
+        getParent(): Form;
+        toJSON(): any;
+        getField(fieldId: string): any;
+        updateField(args: object): any;
+    }
+}
 declare module "utils/client" {
     import { BaseSDK } from "core/index";
     export class Client extends BaseSDK {
@@ -112,14 +147,23 @@ declare module "utils/index" {
     export * from "utils/formatter";
     export const isObject: (value: any) => boolean;
 }
-declare module "core/proxy" {
-    export class CreateProxy {
-        path: string[];
-        parent: object;
-        constructor(parent: object, target?: {}, path?: any[]);
-        get(target: object, property: string): any;
-        set(target: object, property: string, value: any, reciever: any): any;
+declare module "window/NDEFReader" {
+    import { BaseSDK } from "core/index";
+    export class NDEFReader extends BaseSDK {
+        id: string;
+        constructor();
+        scan(): Promise<unknown>;
+        write(data: any): Promise<unknown>;
+        addEventListener(eventName: string, cb: Function): void;
+        makeReadOnly(): Promise<unknown>;
+        abortScan(): Promise<unknown>;
     }
+}
+declare module "window/index" {
+    import { NDEFReader } from "window/NDEFReader";
+    export const window: {
+        NDEFReader: typeof NDEFReader;
+    };
 }
 declare module "types/external" {
     export type userObject = {
@@ -218,6 +262,27 @@ declare module "types/internal" {
         popupId?: string;
     }
 }
+declare module "nocode" {
+    import { BaseSDK } from "core/index";
+    import { Form, TableForm } from "form/index";
+    import { Client, Formatter } from "utils/index";
+    import { window } from "window/index";
+    import { SDKContext } from "types/internal";
+    import { userObject, accountObject, FetchOptions } from "types/external";
+    class NocodeSDK extends BaseSDK {
+        #private;
+        context: Form | TableForm;
+        client: Client;
+        formatter: Formatter;
+        user: userObject;
+        account: accountObject;
+        eventParameters: any;
+        constructor(props: SDKContext);
+        api(url: string, args?: FetchOptions): Promise<any>;
+    }
+    function initSDK(config: SDKContext): NocodeSDK;
+    export { window, initSDK as default };
+}
 declare module "app/component" {
     import { BaseSDK } from "core/index";
     import { ComponentProps } from "types/internal";
@@ -238,6 +303,51 @@ declare module "app/component" {
         _id: string;
         constructor(id: any);
         watchParams(callBack: (data: any) => any): void;
+    }
+}
+declare module "app/dataform" {
+    import { BaseSDK } from "core/index";
+    import { DataformItem, DataformQueryOptions, DataformQueryResponse, DataformCreateItemOptions, DataformUpdateItemOptions } from "types/external";
+    export class Dataform extends BaseSDK {
+        private _id;
+        constructor(flowId: string);
+        /**
+         * Get all items from this dataform with optional filtering, sorting, and pagination
+         * @param options - Query options (searchValue, pageNumber, pageSize, filters, sortBy)
+         * @returns Promise containing items and total count
+         */
+        getItems(options?: DataformQueryOptions): Promise<DataformQueryResponse>;
+        /**
+         * Create a new item in this dataform
+         * @param options - Creation options (data: initial field values, viewId: optional view ID)
+         * @returns Promise containing the newly created item with _id
+         */
+        createItem(options?: DataformCreateItemOptions): Promise<DataformItem>;
+        /**
+         * Update an existing item in this dataform
+         * @param options - Update options (itemId: required, data: required updated values, viewId: optional view ID)
+         * @returns Promise containing the updated item
+         */
+        updateItem(options: DataformUpdateItemOptions): Promise<DataformItem>;
+        importCSV(defaultValues?: object): any;
+        openForm(item: DataformItem): any;
+    }
+}
+declare module "app/decisiontable" {
+    import { BaseSDK } from "core/index";
+    export class DecisionTable extends BaseSDK {
+        private flowId;
+        constructor(flowId: string);
+        evaluate(payload?: object): any;
+    }
+}
+declare module "core/proxy" {
+    export class CreateProxy {
+        path: string[];
+        parent: object;
+        constructor(parent: object, target?: {}, path?: any[]);
+        get(target: object, property: string): any;
+        set(target: object, property: string, value: any, reciever: any): any;
     }
 }
 declare module "app/popup" {
@@ -270,42 +380,6 @@ declare module "app/page" {
         setVariable(key: string | object, value?: any): any;
         openPopup(popupId: string, popupParams?: object): any;
         getComponent(componentId: string): Component;
-    }
-}
-declare module "app/decisiontable" {
-    import { BaseSDK } from "core/index";
-    export class DecisionTable extends BaseSDK {
-        private flowId;
-        constructor(flowId: string);
-        evaluate(payload?: object): any;
-    }
-}
-declare module "app/dataform" {
-    import { BaseSDK } from "core/index";
-    import { DataformItem, DataformQueryOptions, DataformQueryResponse, DataformCreateItemOptions, DataformUpdateItemOptions } from "types/external";
-    export class Dataform extends BaseSDK {
-        private _id;
-        constructor(flowId: string);
-        /**
-         * Get all items from this dataform with optional filtering, sorting, and pagination
-         * @param options - Query options (searchValue, pageNumber, pageSize, filters, sortBy)
-         * @returns Promise containing items and total count
-         */
-        getItems(options?: DataformQueryOptions): Promise<DataformQueryResponse>;
-        /**
-         * Create a new item in this dataform
-         * @param options - Creation options (data: initial field values, viewId: optional view ID)
-         * @returns Promise containing the newly created item with _id
-         */
-        createItem(options?: DataformCreateItemOptions): Promise<DataformItem>;
-        /**
-         * Update an existing item in this dataform
-         * @param options - Update options (itemId: required, data: required updated values, viewId: optional view ID)
-         * @returns Promise containing the updated item
-         */
-        updateItem(options: DataformUpdateItemOptions): Promise<DataformItem>;
-        importCSV(defaultValues?: object): any;
-        openForm(item: DataformItem): any;
     }
 }
 declare module "board/index" {
@@ -350,82 +424,4 @@ declare module "app/index" {
     export * from "app/component";
     export { Page };
     export * from "app/popup";
-}
-declare module "form/index" {
-    import { BaseSDK } from "core/index";
-    export class Form extends BaseSDK {
-        private instanceId;
-        type: string;
-        constructor(instanceId: string);
-        toJSON(): any;
-        getField(fieldId: string): any;
-        updateField(args: object): any;
-        getValidationErrors(): any;
-        getTable(tableId: string): Table;
-    }
-    class Table extends BaseSDK {
-        private tableId;
-        private instanceId;
-        constructor(instanceId: string, tableId: string);
-        toJSON(): any;
-        getSelectedRows(): any;
-        getRows(): TableForm[];
-        getRow(rowId: string): TableForm;
-        addRow(rowObject: object): any;
-        addRows(rows: object[]): any;
-        deleteRow(rowId: string): any;
-        deleteRows(rows: string[]): any;
-    }
-    export class TableForm extends BaseSDK {
-        private instanceId;
-        private tableId;
-        private rowId;
-        type: string;
-        constructor(instanceId: string, tableId: string, rowId: string);
-        getParent(): Form;
-        toJSON(): any;
-        getField(fieldId: string): any;
-        updateField(args: object): any;
-    }
-}
-declare module "index" {
-    import { BaseSDK } from "core/index";
-    import { Application, Page, CustomComponent } from "app/index";
-    import { Form } from "form/index";
-    import { Client, Formatter } from "utils/index";
-    import { userObject, accountObject, environmentObject } from "types/external";
-    class CustomComponentSDK extends BaseSDK {
-        app: Application;
-        page: Page;
-        user: userObject;
-        account: accountObject;
-        context: CustomComponent | Form;
-        client: Client;
-        formatter: Formatter;
-        env: environmentObject;
-        constructor();
-        api(url: string, args?: object): string | object;
-        initialize(): any;
-        initialise(): any;
-    }
-    const _default: CustomComponentSDK;
-    export default _default;
-}
-declare module "window/NDEFReader" {
-    import { BaseSDK } from "core/index";
-    export class NDEFReader extends BaseSDK {
-        id: string;
-        constructor();
-        scan(): Promise<unknown>;
-        write(data: any): Promise<unknown>;
-        addEventListener(eventName: string, cb: Function): void;
-        makeReadOnly(): Promise<unknown>;
-        abortScan(): Promise<unknown>;
-    }
-}
-declare module "window/index" {
-    import { NDEFReader } from "window/NDEFReader";
-    export const window: {
-        NDEFReader: typeof NDEFReader;
-    };
 }

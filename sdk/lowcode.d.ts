@@ -13,6 +13,7 @@ declare module "core/constants" {
         TO_JSON: string;
         GET_TABLE_ROWS: string;
         GET_SELECTED_TABLE_ROWS: string;
+        GET_FORM_VALIDATION_ERRORS: string;
         MESSAGE: string;
         CONFIRM: string;
         ALERT: string;
@@ -92,6 +93,7 @@ declare module "form/index" {
         toJSON(): any;
         getField(fieldId: string): any;
         updateField(args: object): any;
+        getValidationErrors(): any;
         getTable(tableId: string): Table;
     }
     class Table extends BaseSDK {

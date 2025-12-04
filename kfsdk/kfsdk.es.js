@@ -89,6 +89,7 @@ const LISTENER_CMDS = {
   DATAFORM_GET_ITEMS: "DATAFORM_GET_ITEMS",
   DATAFORM_CREATE_ITEM: "DATAFORM_CREATE_ITEM",
   DATAFORM_UPDATE_ITEM: "DATAFORM_UPDATE_ITEM",
+  DATAFORM_INIT_FORM: "DATAFORM_INIT_FORM",
   PROCESS_OPEN_FORM: "PROCESS_OPEN_FORM",
   BOARD_IMPORT_CSV: "BOARD_IMPORT_CSV",
   BOARD_OPEN_FORM: "BOARD_OPEN_FORM"
@@ -483,132 +484,6 @@ class DecisionTable extends BaseSDK {
     });
   }
 }
-class Dataform extends BaseSDK {
-  constructor(flowId) {
-    super();
-    this._id = flowId;
-  }
-  getItems(options) {
-    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_GET_ITEMS, {
-      flowId: this._id,
-      searchValue: (options == null ? void 0 : options.searchValue) || "",
-      pageNumber: (options == null ? void 0 : options.pageNumber) || 1,
-      pageSize: (options == null ? void 0 : options.pageSize) || 50,
-      filters: (options == null ? void 0 : options.filters) || {},
-      sortBy: (options == null ? void 0 : options.sortBy) || []
-    });
-  }
-  createItem(options) {
-    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_CREATE_ITEM, {
-      flowId: this._id,
-      data: (options == null ? void 0 : options.data) || {},
-      viewId: (options == null ? void 0 : options.viewId) || ""
-    });
-  }
-  updateItem(options) {
-    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_UPDATE_ITEM, {
-      flowId: this._id,
-      itemId: options.itemId,
-      data: options.data,
-      viewId: options.viewId || ""
-    });
-  }
-  importCSV(defaultValues) {
-    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_IMPORT_CSV, {
-      flowId: this._id,
-      defaultValues
-    });
-  }
-  openForm(item) {
-    if (!item._id) {
-      return Promise.reject({
-        message: "Instance Id (_id) is required"
-      });
-    }
-    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_OPEN_FORM, {
-      flowId: this._id,
-      itemId: item._id
-    });
-  }
-}
-class Board extends BaseSDK {
-  constructor(flowId) {
-    super();
-    this._id = flowId;
-  }
-  importCSV(defaultValues) {
-    return this._postMessageAsync(LISTENER_CMDS.BOARD_IMPORT_CSV, {
-      flowId: this._id,
-      defaultValues
-    });
-  }
-  openForm(item) {
-    if (!item._id) {
-      return Promise.reject({
-        message: "Instance Id (_id) is required"
-      });
-    }
-    return this._postMessageAsync(LISTENER_CMDS.BOARD_OPEN_FORM, {
-      flowId: this._id,
-      itemId: item._id,
-      viewId: item._view_id
-    });
-  }
-}
-class Process extends BaseSDK {
-  constructor(flowId) {
-    super();
-    this._id = flowId;
-  }
-  openForm(item) {
-    if (!item._id || !item._activity_instance_id) {
-      return Promise.reject({
-        message: "Instance Id(_id) and Activity Instance Id(_activity_instance_id) are required"
-      });
-    }
-    return this._postMessageAsync(LISTENER_CMDS.PROCESS_OPEN_FORM, {
-      flowId: this._id,
-      instanceId: item._id,
-      activityInstanceId: item._activity_instance_id
-    });
-  }
-}
-class Application extends BaseSDK {
-  constructor(props, isCustomComponent = false) {
-    super();
-    this._id = props.appId;
-    this.page = new Page(props);
-  }
-  getVariable(key) {
-    return this._postMessageAsync(LISTENER_CMDS.GET_APP_VARIABLE, {
-      key
-    });
-  }
-  setVariable(key, value) {
-    return this._postMessageAsync(LISTENER_CMDS.SET_APP_VARIABLE, {
-      key,
-      value
-    });
-  }
-  openPage(pageId, pageParams) {
-    return this._postMessageAsync(LISTENER_CMDS.OPEN_PAGE, {
-      pageId,
-      pageParams
-    });
-  }
-  getDecisionTable(flowId) {
-    return new DecisionTable(flowId);
-  }
-  getDataform(flowId) {
-    return new Dataform(flowId);
-  }
-  getBoard(flowId) {
-    return new Board(flowId);
-  }
-  getProcess(flowId) {
-    return new Process(flowId);
-  }
-}
 class Form extends BaseSDK {
   constructor(instanceId) {
     super();
@@ -728,6 +603,143 @@ class TableForm extends BaseSDK {
       rowId: this.rowId,
       data: args
     });
+  }
+}
+class Dataform extends BaseSDK {
+  constructor(flowId) {
+    super();
+    this._id = flowId;
+  }
+  getItems(options) {
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_GET_ITEMS, {
+      flowId: this._id,
+      searchValue: (options == null ? void 0 : options.searchValue) || "",
+      pageNumber: (options == null ? void 0 : options.pageNumber) || 1,
+      pageSize: (options == null ? void 0 : options.pageSize) || 50,
+      filters: (options == null ? void 0 : options.filters) || {},
+      sortBy: (options == null ? void 0 : options.sortBy) || []
+    });
+  }
+  createItem(options) {
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_CREATE_ITEM, {
+      flowId: this._id,
+      data: (options == null ? void 0 : options.data) || {},
+      viewId: (options == null ? void 0 : options.viewId) || ""
+    });
+  }
+  updateItem(options) {
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_UPDATE_ITEM, {
+      flowId: this._id,
+      itemId: options.itemId,
+      data: options.data,
+      viewId: options.viewId || ""
+    });
+  }
+  importCSV(defaultValues) {
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_IMPORT_CSV, {
+      flowId: this._id,
+      defaultValues
+    });
+  }
+  openForm(item) {
+    if (!item._id) {
+      return Promise.reject({
+        message: "Instance Id (_id) is required"
+      });
+    }
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_OPEN_FORM, {
+      flowId: this._id,
+      itemId: item._id
+    });
+  }
+  getForm(instanceId) {
+    return new Form(instanceId);
+  }
+  initForm(instanceId) {
+    return this._postMessageAsync(LISTENER_CMDS.DATAFORM_INIT_FORM, {
+      flowId: this._id,
+      instanceId: instanceId || ""
+    }).then((response) => {
+      return new Form(response.storeId || instanceId || "");
+    });
+  }
+}
+class Board extends BaseSDK {
+  constructor(flowId) {
+    super();
+    this._id = flowId;
+  }
+  importCSV(defaultValues) {
+    return this._postMessageAsync(LISTENER_CMDS.BOARD_IMPORT_CSV, {
+      flowId: this._id,
+      defaultValues
+    });
+  }
+  openForm(item) {
+    if (!item._id) {
+      return Promise.reject({
+        message: "Instance Id (_id) is required"
+      });
+    }
+    return this._postMessageAsync(LISTENER_CMDS.BOARD_OPEN_FORM, {
+      flowId: this._id,
+      itemId: item._id,
+      viewId: item._view_id
+    });
+  }
+}
+class Process extends BaseSDK {
+  constructor(flowId) {
+    super();
+    this._id = flowId;
+  }
+  openForm(item) {
+    if (!item._id || !item._activity_instance_id) {
+      return Promise.reject({
+        message: "Instance Id(_id) and Activity Instance Id(_activity_instance_id) are required"
+      });
+    }
+    return this._postMessageAsync(LISTENER_CMDS.PROCESS_OPEN_FORM, {
+      flowId: this._id,
+      instanceId: item._id,
+      activityInstanceId: item._activity_instance_id
+    });
+  }
+}
+class Application extends BaseSDK {
+  constructor(props, isCustomComponent = false) {
+    super();
+    this._id = props.appId;
+    this.page = new Page(props);
+  }
+  getVariable(key) {
+    return this._postMessageAsync(LISTENER_CMDS.GET_APP_VARIABLE, {
+      key
+    });
+  }
+  setVariable(key, value) {
+    return this._postMessageAsync(LISTENER_CMDS.SET_APP_VARIABLE, {
+      key,
+      value
+    });
+  }
+  openPage(pageId, pageParams) {
+    return this._postMessageAsync(LISTENER_CMDS.OPEN_PAGE, {
+      pageId,
+      pageParams
+    });
+  }
+  getDecisionTable(flowId) {
+    return new DecisionTable(flowId);
+  }
+  getDataform(flowId) {
+    return new Dataform(flowId);
+  }
+  getBoard(flowId) {
+    return new Board(flowId);
+  }
+  getProcess(flowId) {
+    return new Process(flowId);
   }
 }
 class CustomComponentSDK extends BaseSDK {

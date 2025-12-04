@@ -48,6 +48,7 @@ const LISTENER_CMDS = {
   TO_JSON: "TO_JSON",
   GET_TABLE_ROWS: "GET_TABLE_ROWS",
   GET_SELECTED_TABLE_ROWS: "GET_SELECTED_TABLE_ROWS",
+  GET_FORM_VALIDATION_ERRORS: "GET_FORM_VALIDATION_ERRORS",
   MESSAGE: "MESSAGE",
   CONFIRM: "CONFIRM",
   ALERT: "ALERT",
@@ -288,6 +289,11 @@ class Form extends BaseSDK {
   updateField(args) {
     return this._postMessageAsync(LISTENER_CMDS.UPDATE_FORM, {
       data: args
+    });
+  }
+  getValidationErrors() {
+    return this._postMessageAsync(LISTENER_CMDS.GET_FORM_VALIDATION_ERRORS, {
+      instanceId: this.instanceId
     });
   }
   getTable(tableId) {

@@ -54,6 +54,7 @@ declare module "core/constants" {
         DATAFORM_GET_ITEMS: string;
         DATAFORM_CREATE_ITEM: string;
         DATAFORM_UPDATE_ITEM: string;
+        DATAFORM_INIT_FORM: string;
         PROCESS_OPEN_FORM: string;
         BOARD_IMPORT_CSV: string;
         BOARD_OPEN_FORM: string;
@@ -83,6 +84,43 @@ declare module "core/index" {
         _postMessageSync(command: string, args: any): any;
     }
     export * from "core/constants";
+}
+declare module "form/index" {
+    import { BaseSDK } from "core/index";
+    export class Form extends BaseSDK {
+        private instanceId;
+        type: string;
+        constructor(instanceId: string);
+        toJSON(): any;
+        getField(fieldId: string): any;
+        updateField(args: object): any;
+        getValidationErrors(): any;
+        getTable(tableId: string): Table;
+    }
+    class Table extends BaseSDK {
+        private tableId;
+        private instanceId;
+        constructor(instanceId: string, tableId: string);
+        toJSON(): any;
+        getSelectedRows(): any;
+        getRows(): TableForm[];
+        getRow(rowId: string): TableForm;
+        addRow(rowObject: object): any;
+        addRows(rows: object[]): any;
+        deleteRow(rowId: string): any;
+        deleteRows(rows: string[]): any;
+    }
+    export class TableForm extends BaseSDK {
+        private instanceId;
+        private tableId;
+        private rowId;
+        type: string;
+        constructor(instanceId: string, tableId: string, rowId: string);
+        getParent(): Form;
+        toJSON(): any;
+        getField(fieldId: string): any;
+        updateField(args: object): any;
+    }
 }
 declare module "utils/client" {
     import { BaseSDK } from "core/index";
@@ -282,6 +320,7 @@ declare module "app/decisiontable" {
 }
 declare module "app/dataform" {
     import { BaseSDK } from "core/index";
+    import { Form } from "form/index";
     import { DataformItem, DataformQueryOptions, DataformQueryResponse, DataformCreateItemOptions, DataformUpdateItemOptions } from "types/external";
     export class Dataform extends BaseSDK {
         private _id;
@@ -306,6 +345,40 @@ declare module "app/dataform" {
         updateItem(options: DataformUpdateItemOptions): Promise<DataformItem>;
         importCSV(defaultValues?: object): any;
         openForm(item: DataformItem): any;
+        /**
+         * Get a form instance for a specific dataform record
+         * This returns a Form instance that uses the shared form store
+         * allowing you to manage dataform records with form SDK methods
+         *
+         * @param instanceId - The instance ID of the dataform record
+         * @returns Form instance for managing the record
+         *
+         * @example
+         * const dataform = kf.app.getDataform("EmpMaster");
+         * const form = dataform.getForm("emp_123");
+         * const data = await form.toJSON();
+         * await form.updateField({ firstName: "John" });
+         */
+        getForm(instanceId: string): Form;
+        /**
+         * Initialize a form with all necessary data (schema, item data, form store)
+         * This is the recommended way to create a custom form for dataform records
+         * It automatically handles fetching schema, item data, and initializing the form store
+         *
+         * @param instanceId - Optional instance ID of the dataform record. If omitted, creates a new record
+         * @returns Promise with Form instance ready to use
+         *
+         * @example
+         * // Load existing record
+         * const dataform = kf.app.getDataform("EmpMaster");
+         * const form = await dataform.initForm("emp_123");
+         * const data = await form.toJSON();
+         *
+         * // Create new record
+         * const form = await dataform.initForm();
+         * await form.updateField({ firstName: "John" });
+         */
+        initForm(instanceId?: string): Promise<Form>;
     }
 }
 declare module "board/index" {
@@ -351,66 +424,6 @@ declare module "app/index" {
     export { Page };
     export * from "app/popup";
 }
-declare module "form/index" {
-    import { BaseSDK } from "core/index";
-    export class Form extends BaseSDK {
-        private instanceId;
-        type: string;
-        constructor(instanceId: string);
-        toJSON(): any;
-        getField(fieldId: string): any;
-        updateField(args: object): any;
-        getValidationErrors(): any;
-        getTable(tableId: string): Table;
-    }
-    class Table extends BaseSDK {
-        private tableId;
-        private instanceId;
-        constructor(instanceId: string, tableId: string);
-        toJSON(): any;
-        getSelectedRows(): any;
-        getRows(): TableForm[];
-        getRow(rowId: string): TableForm;
-        addRow(rowObject: object): any;
-        addRows(rows: object[]): any;
-        deleteRow(rowId: string): any;
-        deleteRows(rows: string[]): any;
-    }
-    export class TableForm extends BaseSDK {
-        private instanceId;
-        private tableId;
-        private rowId;
-        type: string;
-        constructor(instanceId: string, tableId: string, rowId: string);
-        getParent(): Form;
-        toJSON(): any;
-        getField(fieldId: string): any;
-        updateField(args: object): any;
-    }
-}
-declare module "index" {
-    import { BaseSDK } from "core/index";
-    import { Application, Page, CustomComponent } from "app/index";
-    import { Form } from "form/index";
-    import { Client, Formatter } from "utils/index";
-    import { userObject, accountObject, environmentObject } from "types/external";
-    class CustomComponentSDK extends BaseSDK {
-        app: Application;
-        page: Page;
-        user: userObject;
-        account: accountObject;
-        context: CustomComponent | Form;
-        client: Client;
-        formatter: Formatter;
-        env: environmentObject;
-        constructor();
-        api(url: string, args?: object): string | object;
-        initialize(): any;
-        initialise(): any;
-    }
-    const _default: CustomComponentSDK;
-    export default _default;
-}
 declare module "window/NDEFReader" {
     import { BaseSDK } from "core/index";
     export class NDEFReader extends BaseSDK {
@@ -428,4 +441,28 @@ declare module "window/index" {
     export const window: {
         NDEFReader: typeof NDEFReader;
     };
+}
+declare module "lowcode" {
+    import { BaseSDK } from "core/index";
+    import { Form, TableForm } from "form/index";
+    import { Client, Formatter } from "utils/index";
+    import { Application, Page, Component, Popup } from "app/index";
+    import { window } from "window/index";
+    import { SDKContext } from "types/internal";
+    import { userObject, accountObject, environmentObject, FetchOptions } from "types/external";
+    class LowcodeSDK extends BaseSDK {
+        #private;
+        context: Component | Form | TableForm | Page | Popup;
+        client: Client;
+        formatter: Formatter;
+        app: Application;
+        user: userObject;
+        env: environmentObject;
+        account: accountObject;
+        eventParameters: any;
+        constructor(props: SDKContext);
+        api(url: string, args?: FetchOptions): Promise<any>;
+    }
+    function initSDK(config: SDKContext): LowcodeSDK;
+    export { window, initSDK as default };
 }
